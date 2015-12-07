@@ -1,0 +1,229 @@
+<html>
+    <head>
+        <title>#Empty game file</title>
+    </head>
+    <body>
+
+    </body>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js" type="text/javascript"></script>
+    <script src="mesh.js"></script>
+    <script src="pathfinder.js"></script>
+    <script src="generator.js"></script>
+
+	<script>
+        init();
+        var mesh1 = new mesh(
+            [
+                new THREE.Vector3(0,0,-50),
+                new THREE.Vector3(-30,0,-30),
+                new THREE.Vector3(0,0,75),
+                new THREE.Vector3(75,0,0)
+
+
+            ],
+            new THREE.Vector3(15,0,15)
+        );
+
+        var mesh2 = new mesh(
+            [
+                new THREE.Vector3(0,0,75),
+                new THREE.Vector3(75,0,75),
+                new THREE.Vector3(75,0,0)
+            ],
+            new THREE.Vector3(40,0,60)
+        );
+        var mesh3 = new mesh(
+            [
+                new THREE.Vector3(0,0,75),
+                new THREE.Vector3(75,0,75),
+                new THREE.Vector3(75,0,150)
+            ],
+            new THREE.Vector3(40,0,90)
+        );
+
+        nodes = [mesh1,mesh2,mesh3];
+        setNeighbours(mesh1,mesh2);
+        setNeighbours(mesh3,mesh2);
+        //var path = findPath(mesh1,mesh3,nodes);
+        if(path!=undefined)
+        {
+            for(var i = 0 ; i < path.length-1 ; i++)
+            {
+                createLine(path[i],path[i+1],0xff0000);
+            }
+        }
+
+        function createLine(point1,point2,colour)
+        {
+                var material = new THREE.LineBasicMaterial({
+                    color: colour
+                });
+                var geometry = new THREE.Geometry();
+                var first = point1.center.clone();
+                first.y = 10;
+                geometry.vertices.push(first);
+                var second = point2.center.clone();
+                second.y = 10;
+                geometry.vertices.push(second);
+
+                var line = new THREE.Line(geometry,material);
+                scene.add(line);
+                return line;
+        }
+
+        function createLineFromRawPoints(point1,point2,colour)
+        {
+                var material = new THREE.LineBasicMaterial({
+                    color: colour
+                });
+                var geometry = new THREE.Geometry();
+                var first = point1.clone();
+                first.y = 10;
+                geometry.vertices.push(first);
+                var second = point2.clone();
+                second.y = 10;
+                geometry.vertices.push(second);
+
+                var line = new THREE.Line(geometry,material);
+                scene.add(line);
+                return line;
+        }
+
+        function createMarker(point1,colour)
+        {
+                var material = new THREE.LineBasicMaterial({
+                    color: colour
+                });
+                var geometry = new THREE.Geometry();
+                var first = point1.clone();
+                first.y = 0;
+                geometry.vertices.push(first);
+                var second = point1.clone();
+                second.y = 30;
+                geometry.vertices.push(second);
+
+                var line = new THREE.Line(geometry,material);
+                scene.add(line);
+                return line;
+        }
+
+        var agentLocation = new THREE.Vector3(45,0,10);
+        var agentLine = createMarker(agentLocation,0xffffff);
+        var goal = new THREE.Vector3(55,0,125);
+        var goalLine =  createMarker(goal,0xffffff);
+
+        /*var target =  mesh2.getClosestLineToPoint(agentLocation);
+        var targetLine = target.liesOn;
+        createMarker(target,0xaaffaa);
+        console.log(target);
+        createLineFromRawPoints(agentLocation,target,0xffaaaa);
+
+        var target2 = mesh3.getClosestLineToPoint(target);
+        var targetLine = target2.liesOn;
+        createMarker(target2,0xaaffaa);
+        console.log(target2);
+        createLineFromRawPoints(target,target2,0xffaaaa);*/
+        //var newLine = new THREE.Line3(new THREE.Vector3(75,0,150),new THREE.Vector3(75,0,75));
+        //var closest = newLine.closestPointToPoint(target);
+        //console.log(closest);
+    //    console.log(targetLine);
+    //    console.log(targetLine.material)
+    //    targetLine.material.color = new THREE.Color(0xffffff);
+    //    targetLine.material.needsUpdate = true;
+
+    function buildForwardPath(meshPath,start,goal)
+    {
+        var pointPath = []
+        console.log("FOrward path length: " + meshPath.length);
+        meshPath.splice(0,1);   //Remove the target mesh
+        console.log("FOrward path length: " + meshPath.length);
+        var current = start;
+        pointPath.push(current);
+        //var target2 = mesh3.getClosestLineToPoint(target);
+
+        for(var i = 0;i< meshPath.length;i++)
+        {   //Reverse iterator
+            var targetMesh = meshPath[i];
+            var target = targetMesh.getClosestLineToPoint(current);
+            createLineFromRawPoints(current,target,0x00ffdd);
+            current = target;
+                    pointPath.push(current);
+        }
+        createLineFromRawPoints(current,goal,0x00ffdd);
+                pointPath.push(goal);
+                return pointPath;
+    }
+
+    function buildBackwardPath(meshPath,start,goal)
+    {
+        var pointPath = [];
+                console.log("Backward path length: " + meshPath.length);
+        meshPath.splice(meshPath.length-1,1);   //Remove the target mesh
+                console.log("Backward path length: " + meshPath.length);
+        var current = goal;
+        pointPath.splice(0,0,goal);
+        //var target2 = mesh3.getClosestLineToPoint(target);
+
+        for(var i = meshPath.length-1;i>=0;i--)
+        {   //Reverse iterator
+            var targetMesh = meshPath[i];
+            var target = targetMesh.getClosestLineToPoint(current);
+            createLineFromRawPoints(current,target,0xffaaaa);
+            current = target;
+            pointPath.splice(0,0,current);
+        }
+        createLineFromRawPoints(current,start,0xffaaaa);
+        pointPath.splice(0,0,start);
+        return pointPath;
+    }
+
+    function averageTwoPaths(path1,path2)
+    {
+        if(path1.length != path2.length)
+        {
+            console.log("!\tPATHS ARE NOT THE SAME LENGTH, exiting....");
+            console.log(path1.length + " vs " + path2.length);
+            return;
+        }
+        var averageTwoVectors = function(vector1,vector2)
+        {
+            return new THREE.Vector3(
+                (path1[i].x+path2[i].x)/2,
+                (path1[i].y+path2[i].y)/2,
+                (path1[i].z+path2[i].z)/2
+            );
+        }
+
+        var newPath = [];
+        for(var i = 0 ; i < path1.length ; i++)
+        {
+            var averageVector = averageTwoVectors(path1[i],path2[i]);
+            newPath.push(averageVector);
+        }
+        return newPath;
+    }
+
+    function drawPathFromPointSet(path)
+    {
+        if(path.length < 2)
+        {
+            console.log("Must have at least 2 elements in path....");
+            return;
+        }
+        for(var i = 0 ; i < path.length-1 ; i++)
+        {
+            createLineFromRawPoints(path[i],path[i+1],0x00aaff);
+        }
+    }
+    var path = findPath(mesh1,mesh3,nodes);
+
+    var pathCopy1 = path.slice();
+    var pathCopy2 = path.slice();
+
+    var backwardPath = buildBackwardPath(pathCopy1,agentLocation,goal);
+    var forwardPath  = buildForwardPath(pathCopy2,agentLocation,goal);
+    var averagePath = averageTwoPaths(backwardPath,forwardPath);
+    drawPathFromPointSet(averagePath);
+	</script>
+
+	</html>
